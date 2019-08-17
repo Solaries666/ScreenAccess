@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using TiqSoft.ScreenAssistant.Annotations;
 using TiqSoft.ScreenAssistant.Core;
 
 namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
@@ -13,13 +17,17 @@ namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
         protected double MaxOffsetY;
         protected readonly double ShotsPerBurst;
         private readonly string _recognizedName;
+        private float _sensitivityScale;
+        private ObservableCollection<WeaponModule> _installedModules;
+        private bool _isActive;
 
-        protected ApLegWeaponBase(string name, double burstSeconds, string recognizedName, WeaponAL weaponType) // recognized name is for test purpose
+        protected ApLegWeaponBase(string name, double burstSeconds, string recognizedName, int numberOfModules) // recognized name is for test purpose
         {
             _recognizedName = recognizedName;
-            WeaponType = weaponType;
+            NumberOfModules = numberOfModules;
             ShotsPerBurst = ShotsPerSecond * burstSeconds;
             Name = name;
+            InitializeModules();
         }
 
         public string Name { get; protected set; }
@@ -28,7 +36,16 @@ namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
 
         public double AdjustmentCoefficient { get; protected set; }
 
-        public WeaponAL WeaponType { get; }
+        public ObservableCollection<WeaponModule> InstalledModules
+        {
+            get => _installedModules;
+            private set
+            {
+                if (Equals(value, _installedModules)) return;
+                _installedModules = value;
+                OnPropertyChanged();
+            }
+        }
 
         public bool IsTheSameWeapon(string weaponName)
         {
@@ -37,6 +54,15 @@ namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
 
         public abstract double AdjustMouse(int shotNumber);
 
+        private void InitializeModules()
+        {
+            InstalledModules = new ObservableCollection<WeaponModule>();
+            for (var i = 0; i < NumberOfModules; i++)
+            {
+                InstalledModules.Add(new WeaponModule());
+            }
+        }
+
         public void SetOffsets(int deltaX, int deltaY)
         {
             MinOffsetY = deltaX * 0.5;
@@ -44,7 +70,25 @@ namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
             DeltaX = deltaX;
         }
 
+        public void SetSensitivityScale(float sensitivityScale)
+        {
+            _sensitivityScale = sensitivityScale;
+        }
+
         public abstract bool IsDefault();
+
+        public bool IsActive
+        {
+            get => _isActive;
+            set
+            {
+                if (value == _isActive) return;
+                _isActive = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public int NumberOfModules { get; }
 
         protected static double CalculateAdjustment(int shotNumber, double shotsPerBurst)
         {
@@ -59,12 +103,20 @@ namespace TiqSoft.ScreenAssistant.Games.ApLeg.Weapons
         protected void MoveMouse(double horizontalOffset, double verticalOffset)
         {
             int hOffset = AdjustmentCoefficient > 0.001 ? (int)horizontalOffset : 0;
-            MouseControl.Move(hOffset, (int)(verticalOffset * AdjustmentCoefficient));
+            MouseControl.Move((int)(hOffset * _sensitivityScale), (int)(verticalOffset * AdjustmentCoefficient * _sensitivityScale));
         }
 
         public override string ToString()
         {
             return$"{Name} : {_recognizedName}";
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

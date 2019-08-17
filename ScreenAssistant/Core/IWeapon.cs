@@ -1,6 +1,8 @@
-﻿namespace TiqSoft.ScreenAssistant.Core
+﻿using System.ComponentModel;
+
+namespace TiqSoft.ScreenAssistant.Core
 {
-    public interface IWeapon
+    public interface IWeapon : INotifyPropertyChanged
     {
         string Name { get; }
 
@@ -12,6 +14,12 @@
 
         void SetOffsets(int deltaX, int deltaY);
 
+        void SetSensitivityScale(float sensitivityScale);
+
         bool IsDefault();
+
+        bool IsActive { get; set; }
+
+        int NumberOfModules { get; }
     }
 }
